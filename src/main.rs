@@ -1,9 +1,8 @@
+use color_eyre::Result;
 use irrgarten::Maze;
 use ndarray::Array2;
 use rand::Rng;
-use rand_distr::{Normal, Distribution};
 use twmap::*;
-use color_eyre::Result;
 
 const TILE_EMPTY: u8 = 0;
 const TILE_HOOKABLE: u8 = 1;
@@ -31,9 +30,9 @@ fn create_initial_map() -> Result<TwMap> {
         width: 1024,
         height: 1024,
     }));
-    map.images.push(Image::Embedded(EmbeddedImage::from_file("mapres/basic_freeze.png")?));
-    let physics = Group::physics();
-    map.groups.push(physics);
+    map.images.push(Image::Embedded(EmbeddedImage::from_file(
+        "mapres/basic_freeze.png",
+    )?));
     Ok(map)
 }
 
@@ -45,10 +44,27 @@ fn gen_flymap() -> Result<()> {
     const HEIGHT: usize = 1000;
     const WIDTH: usize = 100;
 
-    let mut tiles = Array2::from_shape_simple_fn((HEIGHT, WIDTH), || GameTile::new(TILE_EMPTY, TileFlags::empty()));
-    let mut front_tiles = Array2::from_shape_simple_fn((HEIGHT, WIDTH), || GameTile::new(TILE_EMPTY, TileFlags::empty()));
+    let mut tiles = Array2::from_shape_simple_fn((HEIGHT, WIDTH), || {
+        GameTile::new(TILE_EMPTY, TileFlags::empty())
+    });
+    let mut front_tiles = Array2::from_shape_simple_fn((HEIGHT, WIDTH), || {
+        GameTile::new(TILE_EMPTY, TileFlags::empty())
+    });
 
-    tiles.row_mut(HEIGHT - 2).iter_mut().for_each(|tile| tile.id = TILE_UNHOOKABLE);
+    let mut unhookable_tiles =
+        Array2::from_shape_simple_fn((HEIGHT, WIDTH), || Tile::new(0, TileFlags::empty()));
+    let mut freeze_tiles =
+        Array2::from_shape_simple_fn((HEIGHT, WIDTH), || Tile::new(0, TileFlags::empty()));
+
+    tiles
+        .row_mut(HEIGHT - 2)
+        .iter_mut()
+        .for_each(|tile| tile.id = TILE_UNHOOKABLE);
+    unhookable_tiles
+        .row_mut(HEIGHT - 2)
+        .iter_mut()
+        .for_each(|tile| tile.id = 1);
+
     tiles[(HEIGHT - 3, WIDTH / 2)].id = TILE_SPAWN;
 
     for x in 0..WIDTH {
@@ -59,7 +75,7 @@ fn gen_flymap() -> Result<()> {
     let mut center: i64 = WIDTH as i64 / 2;
     let mut fly_width: i64 = 10;
 
-    for y in (0..=(HEIGHT-3)).rev() {
+    for y in (0..=(HEIGHT - 3)).rev() {
         let direction: i64 = rng.gen_range(-1..=1);
         let width_change: i64 = rng.gen_range(-1..=1);
         center += direction;
@@ -69,24 +85,45 @@ fn gen_flymap() -> Result<()> {
 
         for x in ((center + fly_width) as usize)..WIDTH {
             tiles[(y, x)].id = TILE_FREEZE;
+            freeze_tiles[(y, x)].id = 4;
         }
 
         for x in 0..=((center - fly_width) as usize) {
             tiles[(y, x)].id = TILE_FREEZE;
+            freeze_tiles[(y, x)].id = 4;
         }
     }
 
     let game_layer = GameLayer {
-        tiles: CompressedData::Loaded(tiles)
+        tiles: CompressedData::Loaded(tiles),
     };
 
     let front_layer = FrontLayer {
         tiles: CompressedData::Loaded(front_tiles),
     };
 
-    let physics = map.physics_group_mut();
+    let mut unhook_tiles_layer = TilesLayer::new((HEIGHT, WIDTH));
+    unhook_tiles_layer.image = Some(0);
+    unhook_tiles_layer.tiles = CompressedData::Loaded(unhookable_tiles);
+
+    let mut freeze_tiles_layer = TilesLayer::new((HEIGHT, WIDTH));
+    freeze_tiles_layer.image = Some(1);
+    freeze_tiles_layer.tiles = CompressedData::Loaded(freeze_tiles);
+    freeze_tiles_layer.color = Color {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 200,
+    };
+
+    let mut physics = Group::physics();
     physics.layers.push(Layer::Game(game_layer));
     physics.layers.push(Layer::Front(front_layer));
+    physics.layers.push(Layer::Tiles(unhook_tiles_layer));
+    physics.layers.push(Layer::Tiles(freeze_tiles_layer));
+
+    map.groups.push(quads_sky());
+    map.groups.push(physics);
 
     map.save_file("server/maps/generated.map")?;
 
@@ -100,7 +137,9 @@ fn gen_maze() -> Result<()> {
 
     let maze = Maze::new(1001, 1001).unwrap().generate(&mut rng);
 
-    let mut tiles = Array2::from_shape_fn((1001, 1001), |(x, y)| GameTile::new(maze[x][y], TileFlags::empty()));
+    let mut tiles = Array2::from_shape_fn((1001, 1001), |(x, y)| {
+        GameTile::new(maze[x][y], TileFlags::empty())
+    });
 
     // Put spawn and start tile on top left most tile.
     let mut added_spawn = false;
@@ -110,8 +149,7 @@ fn gen_maze() -> Result<()> {
             if tile.id == 0 && !added_spawn {
                 *tile = GameTile::new(TILE_SPAWN, TileFlags::empty());
                 added_spawn = true;
-            }
-            else if tile.id == 0 && added_spawn {
+            } else if tile.id == 0 && added_spawn {
                 *tile = GameTile::new(TILE_START, TileFlags::empty());
                 break 'outerStart;
             }
@@ -130,13 +168,56 @@ fn gen_maze() -> Result<()> {
     }
 
     let game_layer = GameLayer {
-        tiles: CompressedData::Loaded(tiles)
+        tiles: CompressedData::Loaded(tiles),
     };
 
-    let physics = map.physics_group_mut();
+    let mut physics = Group::physics();
     physics.layers.push(Layer::Game(game_layer));
+    map.groups.push(physics);
 
     map.save_file("server/maps/generated.map")?;
 
     Ok(())
+}
+
+// Creates the sky quad from the editor.
+fn quads_sky() -> Group {
+    let mut quads_group = Group::default();
+    let mut quads_layer = QuadsLayer::default();
+    quads_group.parallax_x = 0;
+    quads_group.parallax_y = 0;
+
+    let mut quad = Quad::new(1600, 800);
+    dbg!(&quad);
+    quad.colors = [
+        Color {
+            r: 94,
+            g: 206,
+            b: 174,
+            a: 255,
+        },
+        Color {
+            r: 94,
+            g: 206,
+            b: 174,
+            a: 255,
+        },
+        Color {
+            r: 204,
+            g: 232,
+            b: 255,
+            a: 255,
+        },
+        Color {
+            r: 204,
+            g: 232,
+            b: 255,
+            a: 255,
+        },
+    ];
+
+    quads_layer.quads.push(quad);
+
+    quads_group.layers.push(Layer::Quads(quads_layer));
+    quads_group
 }
