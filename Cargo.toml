@@ -1,0 +1,16 @@
+[package]
+name = "ddnet-map-gen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+color-eyre = "0.6.1"
+eyre = "0.6.7"
+irrgarten = "0.1.1"
+itertools = "0.10.3"
+ndarray = "0.15.4"
+rand = "0.8.5"
+rand_distr = "0.4.3"
+twmap = "0.6.0"
