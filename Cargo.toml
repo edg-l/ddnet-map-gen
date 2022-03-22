@@ -1,7 +1,11 @@
 [package]
 name = "ddnet-map-gen"
+authors = ["Edgar <git@edgarluque.com>"]
+description = "A DDraceNetwork map generator."
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3-only"
+keywords = ["ddnet", "teeworlds", "mapgen"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use eyre::Result;
+use ndarray::{Array2};
 use rand::Rng;
 use twmap::*;
 
@@ -17,10 +18,10 @@ pub const TILE_FINISH: u8 = 34;
 pub const TILE_SPAWN: u8 = 192;
 
 pub trait MapGenerator {
-    fn generate<R: Rng + ?Sized>(rng: &mut R) -> Result<TwMap>;
+    fn generate<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize) -> Result<TwMap>;
 
-    fn save_file<R: Rng + ?Sized>(rng: &mut R, path: &Path) -> Result<()> {
-        let mut map = Self::generate(rng)?;
+    fn save_file<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize, path: &Path) -> Result<()> {
+        let mut map = Self::generate(rng, width, height)?;
         map.save_file(path)?;
         Ok(())
     }
@@ -80,4 +81,33 @@ pub fn quads_sky() -> Group {
 
     quads_group.layers.push(Layer::Quads(quads_layer));
     quads_group
+}
+
+// Changed the id of the tile if matches oldid.
+pub fn replace_gametile(tiles: &mut Array2<GameTile>, x: usize, y: usize, oldid: u8, newid: u8) {
+    if tiles[(y, x)].id == oldid {
+        tiles[(y, x)].id = newid;
+    }
+}
+
+pub fn replace_around_gametile(tiles: &mut Array2<GameTile>, x: usize, y: usize, oldid: u8, newid: u8) {
+    let width = tiles.ncols();
+    let height = tiles.nrows();
+
+    let directions = [-1, 0, 1];    
+
+    for diry in directions {
+        for dirx in directions {
+            if dirx == 0 && diry == 0 {
+                continue;
+            }
+            if (y as i64) + diry < 0 || (y as i64) + diry >= height as i64 {
+                continue;
+            }
+            if (x as i64) + dirx < 0 || (x as i64) + dirx >= width as i64 {
+                continue;
+            }
+            replace_gametile(tiles, ((x as i64) + dirx) as usize, ((y as i64) + diry) as usize, oldid, newid);
+        }
+    }
 }
