@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use eyre::Result;
-use ndarray::{Array2};
+use fixed::types::I17F15;
+use ndarray::Array2;
 use rand::Rng;
 use twmap::*;
 
@@ -20,7 +21,12 @@ pub const TILE_SPAWN: u8 = 192;
 pub trait MapGenerator {
     fn generate<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize) -> Result<TwMap>;
 
-    fn save_file<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize, path: &Path) -> Result<()> {
+    fn save_file<R: Rng + ?Sized>(
+        rng: &mut R,
+        width: usize,
+        height: usize,
+        path: &Path,
+    ) -> Result<()> {
         let mut map = Self::generate(rng, width, height)?;
         map.save_file(path)?;
         Ok(())
@@ -33,8 +39,7 @@ pub fn create_initial_map() -> Result<TwMap> {
     map.info.credits = "github.com/edg-l/ddnet-map-gen".to_string();
     map.images.push(Image::External(ExternalImage {
         name: "generic_unhookable".to_string(),
-        width: 1024,
-        height: 1024,
+        size: Point::new_same(1024),
     }));
     map.images.push(Image::Embedded(EmbeddedImage::from_file(
         "mapres/basic_freeze.png",
@@ -42,14 +47,15 @@ pub fn create_initial_map() -> Result<TwMap> {
     Ok(map)
 }
 
+
 // Creates the sky quad from the editor.
 pub fn quads_sky() -> Group {
     let mut quads_group = Group::default();
     let mut quads_layer = QuadsLayer::default();
-    quads_group.parallax_x = 0;
-    quads_group.parallax_y = 0;
-
-    let mut quad = Quad::new(50 * 2i32.pow(15), 30 * 2i32.pow(15));
+    quads_group.parallax.x = 0;
+    quads_group.parallax.y = 0;
+    
+    let mut quad = Quad::new(Default::default(), Point::new(I17F15::from_num(50), I17F15::from_num(30))).unwrap();
     quad.colors = [
         Color {
             r: 94,
@@ -90,11 +96,17 @@ pub fn replace_gametile(tiles: &mut Array2<GameTile>, x: usize, y: usize, oldid:
     }
 }
 
-pub fn replace_around_gametile(tiles: &mut Array2<GameTile>, x: usize, y: usize, oldid: u8, newid: u8) {
+pub fn replace_around_gametile(
+    tiles: &mut Array2<GameTile>,
+    x: usize,
+    y: usize,
+    oldid: u8,
+    newid: u8,
+) {
     let width = tiles.ncols();
     let height = tiles.nrows();
 
-    let directions = [-1, 0, 1];    
+    let directions = [-1, 0, 1];
 
     for diry in directions {
         for dirx in directions {
@@ -107,7 +119,13 @@ pub fn replace_around_gametile(tiles: &mut Array2<GameTile>, x: usize, y: usize,
             if (x as i64) + dirx < 0 || (x as i64) + dirx >= width as i64 {
                 continue;
             }
-            replace_gametile(tiles, ((x as i64) + dirx) as usize, ((y as i64) + diry) as usize, oldid, newid);
+            replace_gametile(
+                tiles,
+                ((x as i64) + dirx) as usize,
+                ((y as i64) + diry) as usize,
+                oldid,
+                newid,
+            );
         }
     }
 }

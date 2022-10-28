@@ -1,62 +1,72 @@
 use crate::generators::{fly::FlyGenerator, maze::MazeGenerator, MapGenerator};
-use clap::{arg, command, Command};
+use clap::{arg, Parser, Subcommand};
 use eyre::Result;
-use std::path::Path;
+use owo_colors::OwoColorize;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand_chacha::ChaCha8Rng;
+use rand_seeder::Seeder;
+use std::path::PathBuf;
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// The width of the map.
+    #[arg(long, default_value_t = 1000)]
+    width: usize,
+    /// The height of the map.
+    #[arg(long, default_value_t = 1000)]
+    height: usize,
+    /// The seed used when generating a map. By default a random one.
+    #[arg(short, long)]
+    seed: Option<String>,
+    /// The output map file.
+    #[arg(short, long)]
+    output: PathBuf,
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Generate a map for fly techniques.
+    Fly,
+    /// Generate a maze-like map.
+    Maze,
+}
+
+impl Commands {
+    pub fn print(&self) {
+        let name = match self {
+            Self::Fly => "Maze",
+            Self::Maze => "Fly",
+        };
+        println!("Selected map generator: {}", name.purple().bold());
+    }
+}
 
 pub fn run_cli() -> Result<()> {
-    let matches = command!()
-        .about("A DDraceNetwork map generator")
-        .arg_required_else_help(true)
-        .subcommand_required(true)
-        .arg(arg!(<FILE> "The output map file").required(true))
-        .subcommand(
-            Command::new("maze")
-                .about("Generate a maze-like map")
-                .arg(
-                    arg!(--width <WIDTH> "The width of the map")
-                        .default_value("1000")
-                        .required(false),
-                )
-                .arg(
-                    arg!(--height <HEIGHT> "The height of the map")
-                        .default_value("1000")
-                        .required(false),
-                ),
-        )
-        .subcommand(
-            Command::new("fly")
-                .about("Generate a map for fly techniques")
-                .arg(
-                    arg!(--width <WIDTH> "The width of the map")
-                        .default_value("1000")
-                        .required(false),
-                )
-                .arg(
-                    arg!(--height <HEIGHT> "The height of the map")
-                        .default_value("1000")
-                        .required(false),
-                ),
-        )
-        .get_matches();
+    let cli = Cli::parse();
 
-    let output = matches.value_of("FILE").expect("output is required");
-    let output = Path::new(output);
-
-    let mut rng = rand::thread_rng();
-
-    match matches.subcommand() {
-        Some(("maze", sub_m)) => {
-            let width: usize = sub_m.value_of_t("width").unwrap_or_else(|e| e.exit());
-            let height: usize = sub_m.value_of_t("height").unwrap_or_else(|e| e.exit());
-            MazeGenerator::save_file(&mut rng, width, height, output)?
+    let seed: String = {
+        if let Some(x) = &cli.seed {
+            x.clone()
+        } else {
+            thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(8)
+                .map(char::from)
+                .collect()
         }
-        Some(("fly", sub_m)) => {
-            let width: usize = sub_m.value_of_t("width").unwrap_or_else(|e| e.exit());
-            let height: usize = sub_m.value_of_t("height").unwrap_or_else(|e| e.exit());
-            FlyGenerator::save_file(&mut rng, width, height, output)?
-        }
-        _ => panic!("invalid command"),
+    };
+
+    println!("Using seed: {}", seed.green().bold());
+
+    let mut rng: ChaCha8Rng = Seeder::from(seed).make_rng();
+
+    cli.command.print();
+
+    match cli.command {
+        Commands::Maze => MazeGenerator::save_file(&mut rng, cli.width, cli.height, &cli.output),
+        Commands::Fly => FlyGenerator::save_file(&mut rng, cli.width, cli.height, &cli.output),
     }
-
-    Ok(())
 }
