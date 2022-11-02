@@ -19,34 +19,40 @@ pub const TILE_FINISH: u8 = 34;
 pub const TILE_SPAWN: u8 = 192;
 
 pub trait MapGenerator {
-    fn generate<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize) -> Result<TwMap>;
+    fn generate<R: Rng + ?Sized>(
+        rng: &mut R,
+        mapres: &Path,
+        width: usize,
+        height: usize,
+    ) -> Result<TwMap>;
 
     fn save_file<R: Rng + ?Sized>(
         rng: &mut R,
+        mapres: &Path,
         width: usize,
         height: usize,
         path: &Path,
     ) -> Result<()> {
-        let mut map = Self::generate(rng, width, height)?;
+        let mut map = Self::generate(rng, mapres, width, height)?;
         map.save_file(path)?;
         Ok(())
     }
 }
 
-pub fn create_initial_map() -> Result<TwMap> {
+pub fn create_initial_map(mapres: &Path) -> Result<TwMap> {
     let mut map = TwMap::empty(Version::DDNet06);
     map.info.author = "github.com/edg-l/ddnet-map-gen".to_string();
     map.info.credits = "github.com/edg-l/ddnet-map-gen".to_string();
+    //map.info.version = 
     map.images.push(Image::External(ExternalImage {
         name: "generic_unhookable".to_string(),
         size: Point::new_same(1024),
     }));
     map.images.push(Image::Embedded(EmbeddedImage::from_file(
-        "mapres/basic_freeze.png",
+        mapres.join("basic_freeze.png"),
     )?));
     Ok(map)
 }
-
 
 // Creates the sky quad from the editor.
 pub fn quads_sky() -> Group {
@@ -54,8 +60,12 @@ pub fn quads_sky() -> Group {
     let mut quads_layer = QuadsLayer::default();
     quads_group.parallax.x = 0;
     quads_group.parallax.y = 0;
-    
-    let mut quad = Quad::new(Default::default(), Point::new(I17F15::from_num(50), I17F15::from_num(30))).unwrap();
+
+    let mut quad = Quad::new(
+        Default::default(),
+        Point::new(I17F15::from_num(50), I17F15::from_num(30)),
+    )
+    .unwrap();
     quad.colors = [
         Color {
             r: 94,

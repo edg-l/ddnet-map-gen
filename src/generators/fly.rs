@@ -6,8 +6,13 @@ use rand::Rng;
 pub struct FlyGenerator;
 
 impl MapGenerator for FlyGenerator {
-    fn generate<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize) -> Result<TwMap> {
-        let mut map = create_initial_map()?;
+    fn generate<R: Rng + ?Sized>(
+        rng: &mut R,
+        mapres: &Path,
+        width: usize,
+        height: usize,
+    ) -> Result<TwMap> {
+        let mut map = create_initial_map(mapres)?;
 
         let mut tiles = Array2::from_shape_simple_fn((height, width), || {
             GameTile::new(TILE_EMPTY, TileFlags::empty())
@@ -50,7 +55,7 @@ impl MapGenerator for FlyGenerator {
                 direction_steps = rng.gen_range(1..=10);
                 direction = rng.gen_range(-1..=1);
             }
-            
+
             let width_change: i64 = rng.gen_range(-1..=1);
             center += direction;
             fly_width += width_change;

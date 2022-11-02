@@ -6,7 +6,12 @@ use ndarray::Array2;
 pub struct MazeGenerator;
 
 impl MapGenerator for MazeGenerator {
-    fn generate<R: Rng + ?Sized>(rng: &mut R, width: usize, height: usize) -> Result<TwMap> {
+    fn generate<R: Rng + ?Sized>(
+        rng: &mut R,
+        mapres: &Path,
+        width: usize,
+        height: usize,
+    ) -> Result<TwMap> {
         // Must be odd.
         let width = {
             if width % 2 == 0 {
@@ -23,17 +28,16 @@ impl MapGenerator for MazeGenerator {
             }
         };
 
-        let mut map = create_initial_map()?;
+        let mut map = create_initial_map(mapres)?;
         let maze = Maze::new(width, height).unwrap().generate(rng);
 
-        let hookable_tiles =
-            Array2::from_shape_fn((height, width), |(y, x)| {
-                let mut t = 0;
-                if maze[x][y] == 1 {
-                    t = 9;
-                }
-                Tile::new(t, TileFlags::empty())
-            });
+        let hookable_tiles = Array2::from_shape_fn((height, width), |(y, x)| {
+            let mut t = 0;
+            if maze[x][y] == 1 {
+                t = 9;
+            }
+            Tile::new(t, TileFlags::empty())
+        });
 
         let mut tiles = Array2::from_shape_fn((width, height), |(y, x)| {
             GameTile::new(maze[x][y], TileFlags::empty())

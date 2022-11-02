@@ -19,8 +19,11 @@ struct Cli {
     /// The seed used when generating a map. By default a random one.
     #[arg(short, long)]
     seed: Option<String>,
+    /// The mapres directory.
+    #[arg(short, long, default_value = "mapres")]
+    mapres: PathBuf,
     /// The output map file.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "generated.map")]
     output: PathBuf,
     #[command(subcommand)]
     command: Commands,
@@ -37,8 +40,8 @@ enum Commands {
 impl Commands {
     pub fn print(&self) {
         let name = match self {
-            Self::Fly => "Maze",
-            Self::Maze => "Fly",
+            Self::Fly => "Fly",
+            Self::Maze => "Maze",
         };
         println!("Selected map generator: {}", name.purple().bold());
     }
@@ -66,7 +69,11 @@ pub fn run_cli() -> Result<()> {
     cli.command.print();
 
     match cli.command {
-        Commands::Maze => MazeGenerator::save_file(&mut rng, cli.width, cli.height, &cli.output),
-        Commands::Fly => FlyGenerator::save_file(&mut rng, cli.width, cli.height, &cli.output),
+        Commands::Maze => {
+            MazeGenerator::save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output)
+        }
+        Commands::Fly => {
+            FlyGenerator::save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output)
+        }
     }
 }
