@@ -32,18 +32,33 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Generate a map for fly techniques.
-    Fly,
+    Fly {
+        #[arg(long, default_value_t = 3)]
+        max_fly_width: u16,
+        /// The output map file.
+        #[arg(long, default_value_t = 12)]
+        min_fly_width: u16,
+    },
     /// Generate a maze-like map.
     Maze,
 }
 
 impl Commands {
     pub fn print(&self) {
-        let name = match self {
-            Self::Fly => "Fly",
-            Self::Maze => "Maze",
+        print!("Selected generator: ");
+        let data = match self {
+            Self::Fly {
+                max_fly_width,
+                min_fly_width,
+            } => format!(
+                "{}, parameters: max_fly_width={}, min_fly_width={}",
+                "Fly".purple().bold(),
+                max_fly_width.purple(),
+                min_fly_width.purple()
+            ),
+            Self::Maze => format!("{}", "Maze".purple().bold()),
         };
-        println!("Selected map generator: {}", name.purple().bold());
+        println!("{data}");
     }
 }
 
@@ -70,10 +85,15 @@ pub fn run_cli() -> Result<()> {
 
     match cli.command {
         Commands::Maze => {
-            MazeGenerator::save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output)
+            MazeGenerator.save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output)
         }
-        Commands::Fly => {
-            FlyGenerator::save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output)
+        Commands::Fly {
+            max_fly_width,
+            min_fly_width,
+        } => FlyGenerator {
+            max_fly_width,
+            min_fly_width,
         }
+        .save_file(&mut rng, &cli.mapres, cli.width, cli.height, &cli.output),
     }
 }

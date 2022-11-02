@@ -2,11 +2,16 @@ use super::*;
 use eyre::Result;
 use ndarray::Array2;
 use rand::Rng;
+use rand_distr::{Uniform, Distribution};
 
-pub struct FlyGenerator;
+pub struct FlyGenerator {
+    pub max_fly_width: u16,
+    pub min_fly_width: u16,
+}
 
 impl MapGenerator for FlyGenerator {
     fn generate<R: Rng + ?Sized>(
+        &self,
         rng: &mut R,
         mapres: &Path,
         width: usize,
@@ -14,7 +19,7 @@ impl MapGenerator for FlyGenerator {
     ) -> Result<TwMap> {
         let mut map = create_initial_map(mapres)?;
 
-        let mut tiles = Array2::from_shape_simple_fn((height, width), || {
+        let mut game_tiles = Array2::from_shape_simple_fn((height, width), || {
             GameTile::new(TILE_EMPTY, TileFlags::empty())
         });
         let mut front_tiles = Array2::from_shape_simple_fn((height, width), || {
@@ -26,7 +31,8 @@ impl MapGenerator for FlyGenerator {
         let mut freeze_tiles =
             Array2::from_shape_simple_fn((height, width), || Tile::new(0, TileFlags::empty()));
 
-        tiles
+        // Create the ceiling and spawn.
+        game_tiles
             .row_mut(height - 2)
             .iter_mut()
             .for_each(|tile| tile.id = TILE_UNHOOKABLE);
@@ -35,8 +41,9 @@ impl MapGenerator for FlyGenerator {
             .iter_mut()
             .for_each(|tile| tile.id = 2);
 
-        tiles[(height - 3, width / 2)].id = TILE_SPAWN;
+        game_tiles[(height - 3, width / 2)].id = TILE_SPAWN;
 
+        // Place the start and finish tiles.
         for x in 0..width {
             front_tiles[(height - 6, x)].id = TILE_START;
             front_tiles[(10, x)].id = TILE_FINISH;
@@ -50,25 +57,29 @@ impl MapGenerator for FlyGenerator {
         let mut direction_steps: i64 = rng.gen_range((max_steps / 2)..=max_steps);
         let mut direction: i64 = rng.gen_range(-1..=1);
 
+        let direction_steps_sampler = Uniform::from(1..=10);
+        let direction_sampler = Uniform::from(-1..=1);
+        let width_sampler = Uniform::from(-1..=1);
+
         for y in (0..=(height - 3)).rev() {
             if direction_steps == 0 {
-                direction_steps = rng.gen_range(1..=10);
-                direction = rng.gen_range(-1..=1);
+                direction_steps = direction_steps_sampler.sample(rng);
+                direction = direction_sampler.sample(rng);
             }
 
-            let width_change: i64 = rng.gen_range(-1..=1);
+            let width_change: i64 = width_sampler.sample(rng);
             center += direction;
             fly_width += width_change;
-            fly_width = fly_width.clamp(3, 12);
+            fly_width = fly_width.clamp(self.min_fly_width as i64, self.max_fly_width as i64);
             center = center.clamp(fly_width, width as i64 - fly_width - 1);
 
             for x in ((center + fly_width) as usize)..width {
-                tiles[(y, x)].id = TILE_FREEZE;
+                game_tiles[(y, x)].id = TILE_FREEZE;
                 freeze_tiles[(y, x)].id = 4;
             }
 
             for x in 0..=((center - fly_width) as usize) {
-                tiles[(y, x)].id = TILE_FREEZE;
+                game_tiles[(y, x)].id = TILE_FREEZE;
                 freeze_tiles[(y, x)].id = 4;
             }
 
@@ -76,7 +87,7 @@ impl MapGenerator for FlyGenerator {
         }
 
         let game_layer = GameLayer {
-            tiles: CompressedData::Loaded(tiles),
+            tiles: CompressedData::Loaded(game_tiles),
         };
 
         let front_layer = FrontLayer {

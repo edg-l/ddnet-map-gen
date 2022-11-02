@@ -7,6 +7,7 @@ pub struct MazeGenerator;
 
 impl MapGenerator for MazeGenerator {
     fn generate<R: Rng + ?Sized>(
+        &self,
         rng: &mut R,
         mapres: &Path,
         width: usize,

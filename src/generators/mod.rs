@@ -20,6 +20,7 @@ pub const TILE_SPAWN: u8 = 192;
 
 pub trait MapGenerator {
     fn generate<R: Rng + ?Sized>(
+        &self,
         rng: &mut R,
         mapres: &Path,
         width: usize,
@@ -27,13 +28,14 @@ pub trait MapGenerator {
     ) -> Result<TwMap>;
 
     fn save_file<R: Rng + ?Sized>(
+        &self,
         rng: &mut R,
         mapres: &Path,
         width: usize,
         height: usize,
         path: &Path,
     ) -> Result<()> {
-        let mut map = Self::generate(rng, mapres, width, height)?;
+        let mut map = self.generate(rng, mapres, width, height)?;
         map.save_file(path)?;
         Ok(())
     }
