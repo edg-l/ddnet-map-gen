@@ -2,7 +2,7 @@ use super::*;
 use eyre::Result;
 use ndarray::Array2;
 use rand::Rng;
-use rand_distr::{Uniform, Distribution};
+use rand_distr::{Distribution, Uniform};
 
 pub struct FlyGenerator {
     pub max_fly_width: u16,

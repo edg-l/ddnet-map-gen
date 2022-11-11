@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use color_eyre::Help;
 use eyre::Result;
 use fixed::types::I17F15;
 use ndarray::Array2;
@@ -36,7 +37,7 @@ pub trait MapGenerator {
         path: &Path,
     ) -> Result<()> {
         let mut map = self.generate(rng, mapres, width, height)?;
-        map.save_file(path)?;
+        map.save_file(path).note("Failed to save the map file.")?;
         Ok(())
     }
 }
@@ -45,14 +46,12 @@ pub fn create_initial_map(mapres: &Path) -> Result<TwMap> {
     let mut map = TwMap::empty(Version::DDNet06);
     map.info.author = "github.com/edg-l/ddnet-map-gen".to_string();
     map.info.credits = "github.com/edg-l/ddnet-map-gen".to_string();
-    //map.info.version = 
+    //map.info.version =
     map.images.push(Image::External(ExternalImage {
         name: "generic_unhookable".to_string(),
         size: Point::new_same(1024),
     }));
-    map.images.push(Image::Embedded(EmbeddedImage::from_file(
-        mapres.join("basic_freeze.png"),
-    )?));
+    map.images.push(Image::Embedded(EmbeddedImage::from_file(mapres.join("basic_freeze.png")).note("Might have failed due to a non existing mapres directory, check out the '--mapres' option.")?));
     Ok(map)
 }
 
