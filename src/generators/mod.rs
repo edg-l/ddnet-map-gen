@@ -6,6 +6,7 @@ use fixed::types::I17F15;
 use ndarray::Array2;
 use rand::Rng;
 use twmap::*;
+use vek::{Extent2, Rgba};
 
 pub mod fly;
 pub mod maze;
@@ -49,7 +50,7 @@ pub fn create_initial_map(mapres: &Path) -> Result<TwMap> {
     //map.info.version =
     map.images.push(Image::External(ExternalImage {
         name: "generic_unhookable".to_string(),
-        size: Point::new_same(1024),
+        size: Extent2::new(1024, 1024),
     }));
     map.images.push(Image::Embedded(EmbeddedImage::from_file(mapres.join("basic_freeze.png")).note("Might have failed due to a non existing mapres directory, check out the '--mapres' option.")?));
     Ok(map)
@@ -64,34 +65,14 @@ pub fn quads_sky() -> Group {
 
     let mut quad = Quad::new(
         Default::default(),
-        Point::new(I17F15::from_num(50), I17F15::from_num(30)),
+        Extent2::new(I17F15::from_num(50), I17F15::from_num(30)),
     )
     .unwrap();
     quad.colors = [
-        Color {
-            r: 94,
-            g: 132,
-            b: 174,
-            a: 255,
-        },
-        Color {
-            r: 94,
-            g: 132,
-            b: 174,
-            a: 255,
-        },
-        Color {
-            r: 204,
-            g: 232,
-            b: 255,
-            a: 255,
-        },
-        Color {
-            r: 204,
-            g: 232,
-            b: 255,
-            a: 255,
-        },
+        Rgba::new(94, 132, 174, 255),
+        Rgba::new(94, 132, 174, 255),
+        Rgba::new(204, 232, 255, 255),
+        Rgba::new(204, 232, 255, 255),
     ];
 
     quads_layer.quads.push(quad);

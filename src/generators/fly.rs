@@ -101,12 +101,7 @@ impl MapGenerator for FlyGenerator {
         let mut freeze_tiles_layer = TilesLayer::new((height, width));
         freeze_tiles_layer.image = Some(1);
         freeze_tiles_layer.tiles = CompressedData::Loaded(freeze_tiles);
-        freeze_tiles_layer.color = Color {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 200,
-        };
+        freeze_tiles_layer.color = Rgba::new(0, 0, 0, 200);
 
         let mut physics = Group::physics();
         physics.layers.push(Layer::Game(game_layer));
