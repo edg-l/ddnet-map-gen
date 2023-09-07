@@ -33,10 +33,10 @@ struct Cli {
 enum Commands {
     /// Generate a map for fly techniques.
     Fly {
-        #[arg(long, default_value_t = 3)]
+        #[arg(long, default_value_t = 12)]
         max_fly_width: u16,
         /// The output map file.
-        #[arg(long, default_value_t = 12)]
+        #[arg(long, default_value_t = 3)]
         min_fly_width: u16,
     },
     /// Generate a maze-like map.
