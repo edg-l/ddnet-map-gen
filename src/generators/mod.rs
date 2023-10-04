@@ -52,7 +52,8 @@ pub fn create_initial_map(mapres: &Path) -> Result<TwMap> {
         name: "generic_unhookable".to_string(),
         size: Extent2::new(1024, 1024),
     }));
-    map.images.push(Image::Embedded(EmbeddedImage::from_file(mapres.join("basic_freeze.png")).note("Might have failed due to a non existing mapres directory, check out the '--mapres' option.")?));
+    map.images.push(Image::Embedded(EmbeddedImage::from_file(mapres.join("basic_freeze.png"))
+        .note("Might have failed due to a non existing mapres directory, check out the '--mapres' option.")?));
     Ok(map)
 }
 
